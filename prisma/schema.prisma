@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  email        String    @unique
+  password     String
+  role         Role      @default(USER)
+  blogs        Blog[]
+  comments     Comment[]
+  likes        Like[]
+  refreshToken String?
+  createdAt    DateTime  @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Category {
+  id        Int            @unique @default(autoincrement())
+  name      String         @unique
+  slug      String         @unique
+  blogs     BlogCategory[]
+  createdAt DateTime       @default(now())
+}
+
+model Blog {
+  id          Int            @id @default(autoincrement())
+  title       String
+  slug        String         @unique
+  content     String
+  image       String?
+  author      User           @relation(fields: [authorId], references: [id])
+  authorId    Int
+  category    BlogCategory[]
+  comments    Comment[]
+  likes       Like[]
+  ispublished Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+// Junction table
+model BlogCategory {
+  id         Int      @id @default(autoincrement())
+  blog       Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  blogId     Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId Int
+  createdAt  DateTime @default(now())
+
+  @@unique([blogId, categoryId]) // Ensures unique combinations
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  blogId    Int
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  blogId    Int
+  createdAt DateTime @default(now())
+
+  @@unique([authorId, blogId])
+}
