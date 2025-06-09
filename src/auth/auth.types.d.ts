@@ -15,5 +15,5 @@ export type UserPayload = {
   id: number;
   username?: string;
   email: string;
-  role: "USER" | "ADMIN" | "EDITOR"; // or just `string` if Role is not imported
+  role: "USER" | "ADMIN" | "EDITOR";
 };

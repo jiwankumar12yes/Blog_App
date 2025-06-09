@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../auth/auth.middleware";
+import { optionalAuth } from "../auth/optionalAuth";
 import {
   requireAdmin,
   requireEditor,
@@ -18,9 +19,9 @@ import {
 
 const router = Router();
 
-router.get("/", getBlogs); // public
-router.get("/:id", getBlogById); // public
-router.get("/slug/:slug", getBlogBySlug);
+router.get("/", optionalAuth, getBlogs); // public
+router.get("/:id", optionalAuth, getBlogById); // public
+router.get("/slug/:slug", optionalAuth, getBlogBySlug); // public
 
 router.post(
   "/",
@@ -29,6 +30,7 @@ router.post(
   upload.single("image"),
   createBlog
 );
+
 router.patch(
   "/:id",
   authenticate,

@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import prisma from "../config/db";
 import { verifyToken } from "../utils/token";
-import { JwtPayload } from "./auth.types";
+import { JwtPayload, UserPayload } from "./auth.types";
 
 export const authenticate = async (
   req: Request,
@@ -22,18 +22,17 @@ export const authenticate = async (
     }
   }
 
-  //   console.log("token" + req.headers.authorization);
+  // console.log(token);
   if (!token) {
     res.status(401).json({ message: "Authentication required" });
     return;
   }
 
   try {
-    const decoded = verifyToken(token) as JwtPayload & {
-      user: { id: number; email: string; role: string };
-    };
+    const decoded = verifyToken(token) as UserPayload;
+
     const user = await prisma.user.findUnique({
-      where: { id: decoded.user.id },
+      where: { id: decoded.id },
       select: { id: true, email: true, role: true },
     });
 
@@ -41,6 +40,7 @@ export const authenticate = async (
       res.status(401).json({ message: "User not found" });
       return;
     }
+    // console.log(user);
 
     req.user = user;
     next();

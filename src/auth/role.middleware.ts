@@ -3,7 +3,8 @@ import { NextFunction, Request, Response } from "express";
 export const requireRole = (requiredRole: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     // Check if user is authenticated (from previous middleware)
-    if (!req.user) {
+
+    if (!req.user?.role) {
       res.status(401).json({
         error: "Authentication required",
         message: "Please authenticate first",

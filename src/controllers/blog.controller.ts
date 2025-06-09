@@ -75,8 +75,11 @@ export const createBlog = async (
 
 export const getBlogs = async (req: Request, res: Response) => {
   try {
+    const userRole = req.user?.role;
+    // console.log(userRole);
+
     const blogs = await prisma.blog.findMany({
-      where: { ispublished: true },
+      where: userRole === "ADMIN" ? {} : { ispublished: true },
       include: {
         author: {
           select: {
