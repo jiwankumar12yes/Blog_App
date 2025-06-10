@@ -9,7 +9,8 @@ export const createBlog = async (
 ): Promise<void> => {
   try {
     const { title, content, authorId, categoryId } = req.body;
-    const image = req.file?.path;
+    const imagePath = req.file?.path;
+    const imageFileName = req.file?.filename;
 
     if (!title || !content || !authorId || !categoryId) {
       res.status(400).json({ error: "Missing required fields" });
@@ -26,47 +27,38 @@ export const createBlog = async (
 
     const slug = await generateUniqueSlug(title, prisma.blog);
 
+    let imageRecord = null;
+    if (imagePath && imageFileName) {
+      imageRecord = await prisma.image.findUnique({
+        where: { filename: imageFileName },
+      });
+
+      if (!imageRecord) {
+        imageRecord = await prisma.image.create({
+          data: {
+            url: `/uploads/${imageFileName}`,
+            filename: imageFileName,
+            path: imagePath,
+          },
+        });
+      }
+    }
     const blog = await prisma.blog.create({
       data: {
         title,
         content,
-        image,
+        ...(imageRecord && { imageId: imageRecord.id }),
         authorId: parseInt(authorId),
-        // category: { connect: { id: parseInt(categoryId) } },
+        category: { connect: { id: parseInt(categoryId) } },
         slug,
       },
       include: {
         author: { select: { username: true } },
         category: true,
+        image: true,
       },
     });
-    await prisma.blogCategory.create({
-      data: {
-        blogId: blog.id,
-        categoryId: parseInt(categoryId),
-      },
-    });
-    const fullBlog = await prisma.blog.findUnique({
-      where: { id: blog.id },
-      include: {
-        author: {
-          select: { username: true },
-        },
-        category: {
-          include: {
-            category: true,
-          },
-        },
-      },
-    });
-
-    // Transform to return only the category objects
-    const responseBlog = {
-      ...fullBlog,
-      category: fullBlog?.category.map((cat) => cat.category) || [],
-    };
-
-    res.status(201).json(responseBlog);
+    res.status(201).json(blog);
   } catch (error) {
     // console.error("Error:", error);
     res.status(500).json({ error: "Failed to create blog" + error });
@@ -88,6 +80,7 @@ export const getBlogs = async (req: Request, res: Response) => {
         },
         comments: true,
         likes: true,
+        image: true,
       },
     });
     res.status(200).json(blogs);
@@ -130,6 +123,7 @@ export const getBlogById = async (
             },
           },
         },
+        image: true,
       },
     });
 
@@ -147,10 +141,13 @@ export const updateBlog = async (req: Request, res: Response) => {
   try {
     const { title, content, ispublished } = req.body;
     const { id } = req.params;
-    const image = req.file?.path;
+    const imagePath = req.file?.path;
+    const imageFileName = req.file?.filename;
+    // const image = req.file?.path;
 
     const blog = await prisma.blog.findUnique({
       where: { id: parseInt(id) },
+      include: { image: true },
     });
 
     if (!blog) {
@@ -166,26 +163,56 @@ export const updateBlog = async (req: Request, res: Response) => {
 
     // ✅ Check if it’s a new publish action
     const isNowPublishing = ispublished === true || ispublished === "true";
-    const wasPreviouslyUnpublished = blog.ispublished === false;
+    // const wasPreviouslyUnpublished = blog.ispublished === false;
+
+    // Handle image update
+    let imageUpdate = {};
+    if (imagePath && imageFileName) {
+      let imageRecord = await prisma.image.findUnique({
+        where: { filename: imageFileName },
+      });
+
+      if (!imageRecord) {
+        imageRecord = await prisma.image.create({
+          data: {
+            url: `/uploads/${imageFileName}`,
+            filename: imageFileName,
+            path: imagePath,
+          },
+        });
+      }
+
+      imageUpdate = { imageId: imageRecord.id };
+
+      // Clean up old image if it's no longer used
+      if (blog.imageId) {
+        const oldImage = await prisma.image.findUnique({
+          where: { id: blog.imageId },
+          include: { blogs: true },
+        });
+
+        if (
+          oldImage &&
+          oldImage.blogs.length === 1 &&
+          oldImage.blogs[0].id === blog.id
+        ) {
+          await prisma.image.delete({ where: { id: blog.imageId } });
+          // Optionally delete the file from storage here
+        }
+      }
+    }
 
     const updatedBlog = await prisma.blog.update({
       where: { id: parseInt(id) },
       data: {
         ...(title && { title }),
         ...(content && { content }),
-        ...(image && { image }),
-        ...(ispublished !== undefined && {
-          ispublished: isNowPublishing,
-        }),
+        ...imageUpdate,
+        ...(ispublished !== undefined && { ispublished: isNowPublishing }),
       },
       include: {
-        author: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-          },
-        },
+        author: { select: { id: true, email: true, username: true } },
+        image: true, // Include image in response
       },
     });
 
@@ -281,6 +308,7 @@ export const getBlogBySlug = async (req: Request, res: Response) => {
       include: {
         author: { select: { username: true } },
         category: true,
+        image: true,
       },
     });
 

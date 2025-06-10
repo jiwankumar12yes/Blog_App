@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import dotnet from "dotenv";
 import express from "express";
+import fs from "fs";
 import morgan from "morgan";
 import path from "path";
 import authRoute from "./auth/auth.route";
@@ -19,6 +20,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
+const uploadPath = path.join(__dirname, "../uploads");
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath);
+}
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // app.use('/api',userRouter);

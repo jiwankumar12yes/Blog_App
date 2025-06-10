@@ -33,12 +33,22 @@ model Category {
   createdAt DateTime       @default(now())
 }
 
+model Image {
+  id        Int      @id @default(autoincrement())
+  url       String   @unique
+  filename  String   @unique
+  path      String   @unique
+  blogs     Blog[]
+  createdAt DateTime @default(now())
+}
+
 model Blog {
   id          Int            @id @default(autoincrement())
   title       String
   slug        String         @unique
   content     String
-  image       String?
+  image       Image?         @relation(fields: [imageId], references: [id])
+  imageId     Int?
   author      User           @relation(fields: [authorId], references: [id])
   authorId    Int
   category    BlogCategory[]
