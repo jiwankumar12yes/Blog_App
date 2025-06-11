@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  username     String    @unique
-  email        String    @unique
+  id           Int           @id @default(autoincrement())
+  username     String        @unique
+  email        String        @unique
   password     String
-  role         Role      @default(USER)
+  role         Role          @default(USER)
   blogs        Blog[]
   comments     Comment[]
   likes        Like[]
+  subscription Subscription?
   refreshToken String?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime      @default(now())
 }
 
 enum Role {
@@ -90,4 +91,32 @@ model Like {
   createdAt DateTime @default(now())
 
   @@unique([authorId, blogId])
+}
+
+enum SubscriptionPlan {
+  BASIC
+  Standard
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  UNPAID
+}
+
+model Subscription {
+  id             Int                @id @default(autoincrement())
+  userId         Int                @unique
+  user           User               @relation(fields: [userId], references: [id])
+  plan           SubscriptionPlan
+  status         SubscriptionStatus @default(ACTIVE)
+  razorpayPlanId String
+  razorpaySubId  String?
+  startDate      DateTime           @default(now())
+  endDate        DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([userId, status], name: "active_user_subscription")
 }
